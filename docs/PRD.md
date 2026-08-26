@@ -70,7 +70,7 @@ stateDiagram-v2
 | 1 | Compute & Synthesis Core | STM32F103C8T6 / ESP32 Dev Board | 1 | ₹220 | Robu.in (DMA + Internal High-Speed DAC) |
 | 2 | Acoustic Power Amplifier | PAM8302 2.5W Class-D Module | 1 | ₹95 | ElectronicsComp (>85% PAE efficiency) |
 | 3 | Bare Acoustic Transducer | Waterproof Piezo Disc (40 kHz) | 1 | ₹320 | Desoldered from JSN-SR04T probe |
-| 4 | LC Reconstruction Filter | 100 μH Inductor + 100 nF Cap | 1 set | ₹35 | Local Shop (Smooths PWM switching to sine) |
+| 4 | LC Reconstruction Filter | 68 µH Inductor + 150 nF Film Cap (per leg) | 1 set | ₹35 | Local Shop — **68 µH + 150 nF → fc ≈ 49.8 kHz, above 40 kHz carrier** |
 | 5 | Power Subsystem | 18650 Li-ion Cell + TP4056 Charger | 1 set | ₹145 | Robu.in / Local Market |
 | 6 | Water Isolation Container | Transparent Acrylic Box / Bucket | 1 | ₹80 | Local Hardware Store (Water test setup) |
 | 7 | Interconnects & Accessories | Jumper Wires, Switch, Header Pins | 1 set | ₹40 | Local Market |
