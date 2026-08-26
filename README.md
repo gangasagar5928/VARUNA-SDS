@@ -2,6 +2,9 @@
 > **"Adaptive Subsea Acoustic Waveform Synthesis for Autonomous Underwater Vehicles"**  
 > *Named after Varuna, the ancient Vedic deity of the Oceans and Celestial Waters + Software-Defined Sonar.*
 
+[![VARUNA-SDS CI Pipeline](https://github.com/gangasagar5928/VARUNA-SDS/actions/workflows/ci.yml/badge.svg)](https://github.com/gangasagar5928/VARUNA-SDS/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **Sponsoring Organization:** Ministry of Earth Sciences (MoES)  
 **Theme:** Hardware | Robotics & Drones / Oceanography  
 
