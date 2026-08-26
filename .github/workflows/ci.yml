@@ -1,10 +1,11 @@
-name: VARUNA-SDS CI Pipeline
+name: CI Pipeline
 
 on:
   push:
     branches: [ "main", "develop" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   python-dsp-tests:
@@ -35,7 +36,7 @@ jobs:
 
       - name: Execute End-to-End Simulation Benchmark
         run: |
-          python simulation/run_demo.py
+          python simulation/run_demo.py --plot
 
   firmware-build:
     name: Embedded Firmware PlatformIO Build

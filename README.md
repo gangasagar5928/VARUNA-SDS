@@ -3,10 +3,9 @@
 >
 > *Named after Varuna — the ancient Vedic deity of the Oceans and Celestial Waters.*
 
-[![CI Pipeline](https://github.com/gangasagar5928/VARUNA-SDS/actions/workflows/ci.yml/badge.svg)](https://github.com/gangasagar5928/VARUNA-SDS/actions/workflows/ci.yml)
-[![Firmware Build](https://github.com/gangasagar5928/VARUNA-SDS/actions/workflows/release.yml/badge.svg)](https://github.com/gangasagar5928/VARUNA-SDS/actions/workflows/release.yml)
+[![CI Pipeline](https://github.com/gangasagar5928/VARUNA-SDS/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gangasagar5928/VARUNA-SDS/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![PlatformIO](https://img.shields.io/badge/PlatformIO-ESP32%20%7C%20STM32-orange.svg)](https://platformio.org/)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-ESP32-orange.svg)](https://platformio.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Sponsoring Organization:** Ministry of Earth Sciences (MoES) | **Theme:** Hardware · Robotics & Drones · Oceanography
