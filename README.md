@@ -170,11 +170,26 @@ HELP                        → List all commands
 | 1 | ESP32 / STM32F103 Dev Board | 1 | ₹220 | Robu.in |
 | 2 | PAM8302 2.5W Class-D Module | 1 | ₹95 | ElectronicsComp |
 | 3 | Waterproof 40 kHz Piezo Disc (from JSN-SR04T) | 1 | ₹320 | Desoldered |
-| 4 | 100 µH Inductor + 100 nF Film Cap | 1 set | ₹35 | Local shop |
+| 4 | 68 µH Inductor + 150 nF Film Cap (per leg) | 1 set | ₹35 | Local shop — **corrected values; fc ≈ 49.8 kHz, above 40 kHz carrier** |
 | 5 | 18650 Li-ion + TP4056 Charger Module | 1 set | ₹145 | Robu.in |
 | 6 | Transparent Acrylic Box / Bucket | 1 | ₹80 | Hardware store |
 | 7 | Jumper Wires, Switch, Header Pins | 1 set | ₹40 | Local market |
 | | **Total** | | **~₹935** | *(Production target: ~₹480)* |
+
+---
+
+## ⚠ Known Design Limitations & Tradeoffs (v1.0 Prototype)
+
+Documented for reproducibility and technical transparency.
+
+| # | Limitation | Impact | Production Fix |
+| :- | :--- | :--- | :--- |
+| 1 | **PAM8302 rated 20 Hz–20 kHz (audio)** | Output power drops sharply at 40 kHz; off-spec use | Replace with **TC1427** ultrasonic driver (200 kHz, ±1.5A peak) |
+| 2 | **8-bit DAC at 12.5 samples/cycle** | SFDR ≈ −40 dBc; harmonic spurs | External **16-bit 1 MSPS DAC** → 25 samp/cycle → ~−80 dBc SFDR |
+| 3 | **Transmit-only — no Rx path** | Cannot compute time-of-flight on-board | v2.0: hydrophone + preamp + 16-bit ADC + firmware matched filter |
+| 4 | **JSN-SR04T piezo uncalibrated in water** | Impedance at 40 kHz unknown; no matching network | PZT-5H Tonpilz + KLM impedance model + tuned matching network |
+| 5 | **100 m depth = production hull target only** | Acrylic prototype: shallow tank only (<0.5 m) | IP68 6061 aluminium housing; MIL-STD-810H hydrostatic test |
+| 6 | **DDS SFDR not bench-measured** | ~−40 dBc estimated, not verified | Characterize with spectrum analyser; add sinc interpolation filter |
 
 ---
 
