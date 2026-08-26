@@ -56,6 +56,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade platformio
 
-      - name: Build Firmware Targets (ESP32 & STM32)
+      - name: Build Firmware Target (ESP32)
         run: |
-          pio run -d firmware
+          pio run -d firmware -e esp32dev

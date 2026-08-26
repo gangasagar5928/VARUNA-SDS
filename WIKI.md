@@ -91,19 +91,26 @@ VARUNA-SDS applies an idea from radio communications called **Software-Defined R
 
 ## 4. Core concepts explained simply
 
-### 4.1 Direct Digital Synthesis (DDS)
+### 4.1 Direct Digital Synthesis (DDS) & DMA Streaming
 
-Imagine you want to draw a sine wave. You pre-compute all 1024 values of one complete cycle and store them in a table (a Look-Up Table or LUT). Then a timer fires 500,000 times per second, and each time it fires, it reads the next value from the table and writes it to the DAC output pin.
+Imagine you want to synthesize an arbitrary sine wave or chirp. Rather than computing expensive trigonometric operations in real-time, the system uses a **32-bit Fixed-Point Phase Accumulator** and a pre-computed 1024-entry Look-Up Table (LUT):
 
 ```
-[LUT: 0, 49, 96, 139 ... 255 ... 139, 96, 49, 0]
-         ↓ (read out at 500,000 values/sec)
-         DAC output pin (analog voltage)
-         ↓
-         LC filter → Smooth sine wave → Amplifier → Piezo disc → SOUND
+Phase Accumulator (32-bit integer)  ──►  LUT Index (Top 10-bits)  ──►  1024-Entry Sine Table
+                 ▲                                                             │
+                 └── [ + Phase Increment = (f × 2^32) / Fs ]                   ▼
+                                                                        Quantized 8-Bit DAC Sample
+                                                                               │
+                                                                               ▼
+                                                                     I2S DMA Descriptor Ring
+                                                                               │
+                                                                               ▼
+                                                                     Internal DAC (GPIO25)
 ```
 
-This is **Direct Digital Synthesis (DDS)**. It is implemented in [`firmware/src/dds_engine.c`](firmware/src/dds_engine.c).
+1. **Phase Accumulator:** Every clock tick, the 32-bit accumulator advances by `phase_inc`. Overflow wraps at $2^{32}$, giving exact $2\pi$ mathematical periodicity with zero cumulative frequency drift.
+2. **Hardware DMA Streaming:** The computed waveform buffer is transferred to the internal DAC via **I2S DMA descriptors**, freeing the CPU from timing-critical pin-toggling loops.
+3. This is implemented in [`firmware/src/dds_engine.c`](firmware/src/dds_engine.c) and [`firmware/src/hal_esp32_dac.c`](firmware/src/hal_esp32_dac.c).
 
 ### 4.2 LFM Chirp vs CW Ping
 
@@ -466,15 +473,16 @@ Auto-Trigger: ENABLED
 ### Transmit test
 
 1. Flash firmware and open serial monitor.
-2. Send: `SET_MODE 0` then `PING` — you should hear a faint click in the water.
-3. Switch to chirp: `SET_MODE 1`, `PING` — a slightly longer "chirp" sound.
-4. If using a hydrophone or second piezo (as receiver), connect it to an oscilloscope or audio interface to see the echo return.
+2. Send: `SET_MODE 0` then `PING`.
+3. Switch to chirp: `SET_MODE 1` then `PING`.
+4. If using an oscilloscope or receiving hydrophone, probe the transducer terminals to inspect the 40 kHz sine wave bursts.
 
 ### What to observe
 
-- Acoustic emission is confirmed if you see bubbles or surface ripples near the transducer during pinging.
-- With an oscilloscope on the piezo wires: you should see a burst of sinusoidal voltage during the pulse period.
-- The pre-warm delay (100 µs) before each burst prevents pop artefacts in the transducer.
+- **Acoustic inaudibility note:** 40 kHz is **ultrasonic** (human hearing limit is ~20 kHz) — you will **not** hear an audible tone with human ears.
+- **Visual confirmation:** Submerge the transducer near the water surface; during high-amplitude bursts you can observe fine acoustic surface ripples or cavitation disturbances.
+- **Electronic verification:** Connect an oscilloscope across the piezo wires to observe the clean sinusoidal voltage burst without 250 kHz Class-D carrier switching artifacts.
+- The pre-warm delay (100 µs) before each burst prevents pop transients and stabilizes the Class-D power stage.
 
 ---
 
