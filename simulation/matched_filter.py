@@ -5,7 +5,7 @@ Demonstrates acoustic processing gain (10*log10(BT)) and range resolution of LFM
 
 import numpy as np
 import scipy.signal as signal
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 
 
 class MatchedFilterReceiver:
@@ -24,20 +24,20 @@ class MatchedFilterReceiver:
         :param reference_tx: Transmitted replica template
         :return: (time_axis, compressed_envelope, range_axis_meters)
         """
-        # Matched filter via scipy cross-correlation
+        # Matched filter via cross-correlation
         correlation = signal.correlate(rx_signal, reference_tx, mode="full")
         
         # Analytic signal envelope via Hilbert transform
         analytic = signal.hilbert(correlation)
         envelope = np.abs(analytic)
 
-        # Align time axis to start of correlation
+        # Align time axis to start of correlation (peak occurs at sample_delay + len(reference_tx) - 1)
         dt = 1.0 / self.fs
         num_points = len(envelope)
-        time_axis = np.arange(0, num_points) * dt - (len(reference_tx) * dt)
+        time_axis = (np.arange(0, num_points) - (len(reference_tx) - 1)) * dt
         
         # Convert time of flight to target range: r = (c * t) / 2
-        range_axis = np.maximum(0.0, (self.c * time_axis) / 2.0)
+        range_axis = (self.c * np.maximum(0.0, time_axis)) / 2.0
 
         return time_axis, envelope, range_axis
 
@@ -45,28 +45,33 @@ class MatchedFilterReceiver:
         self,
         envelope: np.ndarray,
         range_axis: np.ndarray,
-        threshold_db_below_max: float = 15.0,
+        threshold_db_below_max: float = 12.0,
         min_distance_samples: int = 50
-    ) -> list:
+    ) -> List[Tuple[float, float]]:
         """
         Extract echo peaks and estimated ranges.
+        :return: List of tuples (estimated_range_meters, normalized_amplitude)
         """
         max_val = np.max(envelope) + 1e-12
         env_norm = envelope / max_val
         threshold = 10.0 ** (-threshold_db_below_max / 20.0)
 
-        peaks, props = signal.find_peaks(
+        peaks, _ = signal.find_peaks(
             env_norm,
             height=threshold,
             distance=min_distance_samples,
-            prominence=0.1
+            prominence=0.05
         )
 
         detections = []
         for p in peaks:
             r = range_axis[p]
             amp = env_norm[p]
-            detections.append((float(r), float(amp)))
+            if r > 0.05: # Filter out zero-delay direct feedthrough
+                detections.append((float(r), float(amp)))
+                
+        # Sort by amplitude descending (strongest direct echo first)
+        detections.sort(key=lambda x: x[1], reverse=True)
         return detections
 
     @staticmethod
@@ -102,8 +107,11 @@ if __name__ == "__main__":
     _, tx_chirp, _ = dds.generate_lfm_chirp(35000, 45000, 0.005)
     rx_chirp, meta = channel.propagate_signal(tx_chirp, target_range_m=12.5, snr_db=5.0)
     t_ax, env_chirp, r_ax = rx_engine.process_matched_filter(rx_chirp, tx_chirp)
+    peaks = rx_engine.detect_peaks(env_chirp, r_ax)
     metrics = rx_engine.calculate_theoretical_metrics(bandwidth_hz=10000, duration_sec=0.005)
 
     print(f"[Matched Filter] Theoretical LFM Processing Gain: {metrics['processing_gain_db']:.2f} dB")
     print(f"[Matched Filter] Theoretical Range Resolution: {metrics['range_resolution_m']*100:.2f} cm")
     print(f"[Matched Filter] Ground Truth Range: {meta['target_range_m']} m")
+    if peaks:
+        print(f"[Matched Filter] Estimated Range: {peaks[0][0]:.3f} m (Error: {abs(peaks[0][0] - meta['target_range_m'])*100:.2f} cm)")

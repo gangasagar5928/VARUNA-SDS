@@ -69,7 +69,8 @@ class UnderwaterAcousticChannel:
         snr_db: float = 10.0,
         add_multipath: bool = True,
         water_temp_c: float = 20.0,
-        water_depth_m: float = 5.0
+        water_depth_m: float = 5.0,
+        center_freq_hz: float = 40_000.0
     ) -> Tuple[np.ndarray, Dict[str, float]]:
         """
         Simulate round-trip acoustic propagation in stratified water with thermocline and reflections.
@@ -86,8 +87,8 @@ class UnderwaterAcousticChannel:
         total_samples = delay_samples + len(tx_signal) + int(0.01 * self.fs)
         rx_clean = np.zeros(total_samples)
 
-        # Direct Target Echo
-        tl_db = self.calculate_transmission_loss_db(round_trip_distance, 40_000.0)
+        # Direct Target Echo using dynamic center frequency
+        tl_db = self.calculate_transmission_loss_db(round_trip_distance, center_freq_hz)
         amplitude_scale = (10.0 ** (-tl_db / 20.0)) * np.sqrt(target_rcs)
         
         # Direct return
@@ -95,7 +96,7 @@ class UnderwaterAcousticChannel:
 
         # Multipath surface / bottom echoes
         if add_multipath:
-            # Surface reflection (phase inverted: -0.7 coefficient)
+            # Surface reflection (phase inverted: -0.65 coefficient)
             surface_extra_delay = int(0.0012 * self.fs)  # 1.2 ms extra path
             idx_s = delay_samples + surface_extra_delay
             if idx_s + len(tx_signal) <= total_samples:
@@ -107,9 +108,10 @@ class UnderwaterAcousticChannel:
             if idx_b + len(tx_signal) <= total_samples:
                 rx_clean[idx_b : idx_b + len(tx_signal)] += 0.40 * tx_signal * amplitude_scale
 
-        # Add Gaussian ambient acoustic noise
-        sig_power = np.mean(rx_clean ** 2) + 1e-12
-        noise_power = sig_power / (10.0 ** (snr_db / 10.0))
+        # Constant ambient ocean noise floor referenced to nominal transmission level
+        tx_ref_power = np.mean(tx_signal ** 2) if len(tx_signal) > 0 else 1.0
+        # Background ambient noise power floor
+        noise_power = (tx_ref_power * 1e-3) / (10.0 ** (snr_db / 10.0))
         noise = np.random.normal(0.0, np.sqrt(noise_power), len(rx_clean))
 
         rx_noisy = rx_clean + noise
@@ -119,7 +121,8 @@ class UnderwaterAcousticChannel:
             "round_trip_delay_ms": propagation_delay_sec * 1000.0,
             "target_range_m": target_range_m,
             "transmission_loss_db": tl_db,
-            "delay_samples": delay_samples
+            "delay_samples": delay_samples,
+            "center_freq_hz": center_freq_hz
         }
 
         return rx_noisy, telemetry
