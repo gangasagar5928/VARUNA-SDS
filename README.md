@@ -43,7 +43,7 @@ The payload is built in **6 stacked cylindrical layers**, each handling a distin
 | Layer | Name | Components |
 | :---: | :--- | :--- |
 | 6 | **Acoustic Transducer & Aperture** | 40 kHz Waterproof Piezoceramic Disc, IP68 Cable Gland, O-Ring Seal |
-| 5 | **Reconstruction & Power Amplifier** | PAM8302 Class-D Amplifier, 100 µH + 100 nF LC Filter, Impedance Matching Transformer |
+| 5 | **Reconstruction & Power Amplifier** | PAM8302 Class-D Amplifier, 68 µH + 150 nF LC Filter (fc ≈ 49.83 kHz), Impedance Matching Transformer |
 | 4 | **DDS Synthesis Core** | STM32F103 / ESP32, Internal High-Speed DAC, DMA Controller, LUT Circuit |
 | 3 | **AUV Command & Telemetry** | UART/RS485 Transceiver, SPI Telemetry Headers, Status LEDs |
 | 2 | **Power Regulation & Isolation** | DC-DC Buck Converter, 24V AUV Bus Isolation Transformer, TP4056 USB-C Rail |
