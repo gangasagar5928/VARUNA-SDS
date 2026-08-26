@@ -26,7 +26,7 @@ def main():
     dds = DDSSynthesizer(sample_rate_hz=fs, dac_bits=8)
     channel = UnderwaterAcousticChannel(sample_rate_hz=fs)
     receiver = MatchedFilterReceiver(sample_rate_hz=fs)
-    lc_filter = LCReconstructionFilter(inductance_h=100e-6, capacitance_f=100e-9)
+    lc_filter = LCReconstructionFilter(inductance_h=68e-6, capacitance_f=150e-9)  # Corrected: fc ≈ 49.8 kHz
 
     target_range = 15.0 # 15 meters
     snr_input_db = 0.0  # 0 dB noisy underwater environment
