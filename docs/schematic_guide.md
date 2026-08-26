@@ -1,6 +1,8 @@
 # Hardware Integration & Schematic Guide
 ## VARUNA-SDS: Software-Defined Sonar Transmitter
 
+![VARUNA-SDS Hardware Layer Architecture](../assets/varuna_sds_exploded_view.jpg)
+
 ---
 
 ## 1. System Interconnect Block Diagram

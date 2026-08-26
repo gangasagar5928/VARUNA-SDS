@@ -7,6 +7,14 @@
 
 ---
 
+## 🌊 System Architecture & Visual Design
+
+![VARUNA-SDS Hardware Layer Architecture](assets/varuna_sds_exploded_view.jpg)
+
+![VARUNA-SDS Onboard AUV Integration](assets/varuna_sds_auv_integration.jpg)
+
+---
+
 ## 🌊 Overview
 
 Conventional active sonars rely on fixed-frequency hardware oscillators that degrade in underwater thermoclines, temperature stratification, and multipath acoustic fading. **VARUNA-SDS** applies Software-Defined Radio (SDR) principles to underwater acoustics, utilizing Direct Digital Synthesis (DDS) via DMA to dynamically synthesize complex acoustic waveforms (CW Pings, Linear Frequency Modulation [LFM] Chirps) in real time while driving piezoceramic transducers via a high-efficiency Class-D amplifier.
@@ -20,8 +28,15 @@ Conventional active sonars rely on fixed-frequency hardware oscillators that deg
   - **Mode B (LFM Chirp)**: 35 kHz -> 45 kHz linear frequency sweep (pulse compression gain \(\approx +17\text{ dB}\)).
 - **Dynamic Run-Time Reconfiguration**: Non-blocking UART protocol for live updates to frequency, bandwidth, pulse width, and pulse repetition interval (PRI).
 - **High-Efficiency Class-D Power Stage**: Driven via PAM8302 (>85% efficiency) with a tuned 2nd-order LC reconstruction filter (\(>33\text{ dB}\) PWM carrier suppression).
+- **Subsea Modular Hardware Architecture**:
+  1. **Layer 1**: Subsea Pressure Hull Layer (IP68 Anodized Aluminum 6061 Vessel Base).
+  2. **Layer 2**: Power Regulation & Isolation Layer (DC-DC Buck Converter + 24V AUV Bus Isolation + TP4056 USB-C Rail).
+  3. **Layer 3**: AUV Command & Telemetry Layer (UART/RS485 Transceiver, SPI Telemetry Headers, Status LEDs).
+  4. **Layer 4**: Direct Digital Synthesis (DDS) Core Layer (STM32F103/ESP32, Internal High-Speed DAC, DMA Controller).
+  5. **Layer 5**: Reconstruction & Power Amplifier Layer (PAM8302 Class-D Audio Power Module + 100uH/100nF LC Filter + Impedance Matching Transformer).
+  6. **Layer 6**: Acoustic Transducer & Aperture Layer (40kHz Waterproof Piezoceramic Projector Disc + Watertight O-ring Seal + IP68 Subsea Cable Gland).
 - **Comprehensive Acoustic Simulation**: Ocean sound speed (Mackenzie), Thorp absorption, thermocline propagation, and matched-filter receiver analysis.
-- **Low-Cost Prototype BOM**: Complete working transmitter prototype under **₹935 INR** (~$5.80 USD production target).
+- **Physical Specifications**: Cylindrical Payload (120 mm Height x 55 mm Diameter, Volume \(\approx 362\text{ cm}^3\), Weight \(\approx 620\text{ g}\) in air).
 
 ---
 
@@ -29,7 +44,10 @@ Conventional active sonars rely on fixed-frequency hardware oscillators that deg
 
 ```
 VARUNA-SDS/
-├── README.md                  # Project overview & branding
+├── README.md                  # Project overview & visual architecture
+├── assets/                    # High-resolution CAD exploded views & AUV renders
+│   ├── varuna_sds_exploded_view.jpg
+│   └── varuna_sds_auv_integration.jpg
 ├── docs/
 │   ├── PRD.md                 # Product Requirements Document
 │   ├── schematic_guide.md     # Wiring, PAM8302 & LC filter schematics, piezo desoldering
@@ -87,3 +105,5 @@ pio run -e esp32dev -t upload
 | **Matched Filter Gain** | 0.00 dB | **+16.99 dB** |
 | **Range Resolution (\(\Delta R\))** | 380.4 cm | **7.6 cm (50x finer)** |
 | **LC Carrier Suppression** | > 33 dB @ 250 kHz | > 33 dB @ 250 kHz |
+| **Source Level (SL)** | 183 dB re 1µPa @ 1m | 183 dB re 1µPa @ 1m |
+| **Operating Depth** | 100 m (IP68 Rated) | 100 m (IP68 Rated) |
