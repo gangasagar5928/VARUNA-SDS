@@ -24,7 +24,7 @@ static system_state_t s_current_state = STATE_POWER_ON;
 static sonar_config_t s_config;
 static dds_waveform_t s_active_waveform;
 static uint32_t s_last_ping_time_ms = 0;
-static bool s_trigger_pending = false;
+static volatile bool s_trigger_pending = false;
 
 void setup_system(void) {
     s_current_state = STATE_SYSTEM_INIT;
@@ -84,7 +84,7 @@ void process_sonar_fsm(void) {
         }
 
         case STATE_DRIVE_CLASS_D_AMP: {
-            printf("[FSM] PING BURST: Transmitting %s...\r\n", 
+            printf("[FSM] PING BURST: Transmitting %s via DMA...\r\n", 
                    s_config.mode == SONAR_MODE_CW_PING ? "40kHz CW Ping" : "35-45kHz LFM Chirp");
             hal_dac_transmit_burst(&s_active_waveform);
             s_current_state = STATE_DISABLE_AMP;
