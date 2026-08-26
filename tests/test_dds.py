@@ -1,6 +1,7 @@
 """
 Automated Verification & Unit Test Suite for VARUNA-SDS Payload
-Tests DDS signal synthesis, spectral purity, chirp linearity, LC filtering, and matched filter SNR.
+Tests DDS signal synthesis, spectral purity, chirp linearity, LC filtering,
+matched filter range estimation, multipath resolution, and acoustic propagation.
 """
 
 import sys
@@ -27,7 +28,6 @@ class TestVarunaSDSPayload(unittest.TestCase):
         self.dds = DDSSynthesizer(sample_rate_hz=self.fs, dac_bits=8)
         self.channel = UnderwaterAcousticChannel(sample_rate_hz=self.fs)
         self.receiver = MatchedFilterReceiver(sample_rate_hz=self.fs)
-        # Use corrected component values
         self.lc_filter = LCReconstructionFilter(
             inductance_h=LC_INDUCTANCE_H,
             capacitance_f=LC_CAPACITANCE_F
@@ -53,10 +53,8 @@ class TestVarunaSDSPayload(unittest.TestCase):
         Acceptable for hackathon prototype. Production target: >= 25 samples/cycle (1 MSPS, 16-bit ext DAC).
         """
         samples_per_cycle = self.fs / 40_000.0
-        # Assert minimum prototype threshold (anything below 10 is unacceptable)
         self.assertGreaterEqual(samples_per_cycle, 10.0,
                                 f"Too few samples/cycle: {samples_per_cycle:.1f} — excessive THD")
-        # Warn if below production quality threshold of 25
         if samples_per_cycle < 25.0:
             import warnings
             warnings.warn(
@@ -74,7 +72,6 @@ class TestVarunaSDSPayload(unittest.TestCase):
 
         freqs, mag_db = self.dds.compute_spectrum(sig)
 
-        # In-band power should be significantly higher than out-of-band power
         in_band_mask = (freqs >= 35000.0) & (freqs <= 45000.0)
         out_band_mask = (freqs < 20000.0) | (freqs > 60000.0)
 
@@ -95,11 +92,47 @@ class TestVarunaSDSPayload(unittest.TestCase):
         self.assertAlmostEqual(metrics["processing_gain_db"], expected_pg, places=2)
         self.assertLess(metrics["range_resolution_m"], 0.10, "Range resolution must be < 10 cm")
 
+    def test_peak_detection_range_accuracy(self):
+        """TEST-02: Verify detect_peaks correctly resolves ground truth range within tolerance."""
+        target_range = 18.5 # meters
+        c = self.channel.sound_speed_mackenzie(temperature_c=20.0, salinity_ppt=35.0, depth_m=5.0)
+        self.receiver.c = c
+
+        t_lfm, tx_lfm, _ = self.dds.generate_lfm_chirp(35000, 45000, 0.005, window="tukey")
+        rx_signal, meta = self.channel.propagate_signal(tx_lfm, target_range_m=target_range, snr_db=15.0, add_multipath=False)
+        _, envelope, r_axis = self.receiver.process_matched_filter(rx_signal, tx_lfm)
+        
+        detections = self.receiver.detect_peaks(envelope, r_axis)
+        self.assertTrue(len(detections) > 0, "No peaks detected by matched filter receiver")
+
+        estimated_range = detections[0][0]
+        range_error_m = abs(estimated_range - target_range)
+        self.assertLess(range_error_m, 0.08, f"Range error {range_error_m*100:.2f} cm exceeds range resolution limit")
+
+    def test_multipath_echo_resolution(self):
+        """Verify receiver resolves direct echo and surface bounce multipath peaks."""
+        target_range = 12.0
+        c = self.channel.sound_speed_mackenzie(temperature_c=20.0, salinity_ppt=35.0, depth_m=5.0)
+        self.receiver.c = c
+
+        _, tx_lfm, _ = self.dds.generate_lfm_chirp(35000, 45000, 0.005, window="tukey")
+        rx_signal, _ = self.channel.propagate_signal(tx_lfm, target_range_m=target_range, snr_db=20.0, add_multipath=True)
+        _, envelope, r_axis = self.receiver.process_matched_filter(rx_signal, tx_lfm)
+
+        detections = self.receiver.detect_peaks(envelope, r_axis, threshold_db_below_max=10.0)
+        self.assertGreaterEqual(len(detections), 2, "Failed to resolve multipath reflections")
+
+    def test_buffer_overflow_clamping(self):
+        """TEST-03: Verify synthesis handles long duration requests safely without exceeding buffer."""
+        # 60 ms duration at 500 kSPS would be 30,000 samples, which exceeds max buffer of 4096
+        # Synthesizer should generate exact sample count or clamp properly
+        t, sig, dac = self.dds.generate_cw_ping(freq_hz=40000, duration_sec=0.060)
+        self.assertEqual(len(dac), 30000, "Python reference synthesizer sample count mismatch")
+        self.assertTrue(np.all(dac >= 0) and np.all(dac <= 255), "DAC values exceed 8-bit limits")
+
     def test_lc_filter_cutoff_above_carrier(self):
         """
         CRITICAL: Verify fc > 40 kHz (carrier frequency).
-        A filter with fc below the carrier attenuates the sonar signal — this was the bug
-        in the original 100 µH + 100 nF differential design (fc ≈ 35.59 kHz).
         Corrected design: 68 µH + 150 nF → fc ≈ 49.8 kHz.
         """
         metrics = self.lc_filter.get_filter_metrics()
@@ -108,11 +141,9 @@ class TestVarunaSDSPayload(unittest.TestCase):
         self.assertGreater(metrics["cutoff_frequency_hz"], 40_000.0,
                            f"CRITICAL: fc = {metrics['cutoff_frequency_hz']/1000:.2f} kHz is BELOW 40 kHz carrier!")
 
-        # 40 kHz must NOT be attenuated (raw dB must be > -3 dB).
-        # Positive dB (e.g. +6 dB) is acceptable near-resonance peaking — the signal is boosted, not lost.
-        # The original bug (100µH+100nF, fc=35.59 kHz) gave negative dB here because 40 kHz was in stopband.
+        # 40 kHz must NOT be attenuated (raw dB > -3 dB)
         self.assertGreater(metrics["attenuation_at_40khz_db"], -3.0,
-                           f"40 kHz signal attenuated below -3 dB: {metrics['attenuation_at_40khz_db']:.2f} dB — filter fc is below carrier")
+                           f"40 kHz signal attenuated below -3 dB: {metrics['attenuation_at_40khz_db']:.2f} dB")
 
         # 250 kHz PWM carrier suppression > 20 dB
         self.assertGreater(metrics["pwm_carrier_suppression_ratio_db"], 20.0,
@@ -121,8 +152,13 @@ class TestVarunaSDSPayload(unittest.TestCase):
     def test_acoustic_channel_sound_speed(self):
         """Verify Mackenzie sound speed formula for standard ocean conditions."""
         c = self.channel.sound_speed_mackenzie(temperature_c=20.0, salinity_ppt=35.0, depth_m=10.0)
-        # Expected 1510–1535 m/s for 20°C, 35 ppt, 10 m depth
         self.assertTrue(1500.0 <= c <= 1550.0, f"Sound speed {c} m/s outside realistic ocean limits")
+
+    def test_transmission_loss_frequency_scaling(self):
+        """Verify Thorp attenuation increases at higher frequencies."""
+        loss_40k = self.channel.calculate_transmission_loss_db(range_meters=100.0, center_freq_hz=40_000)
+        loss_80k = self.channel.calculate_transmission_loss_db(range_meters=100.0, center_freq_hz=80_000)
+        self.assertGreater(loss_80k, loss_40k, "Acoustic attenuation did not increase with frequency")
 
 
 if __name__ == "__main__":
