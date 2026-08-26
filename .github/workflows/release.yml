@@ -1,0 +1,51 @@
+name: VARUNA-SDS Firmware Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build Binaries & Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO Core
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+
+      - name: Compile ESP32 & STM32 Firmware
+        run: |
+          pio run -d firmware
+
+      - name: Package Firmware Binaries
+        run: |
+          mkdir -p release_artifacts
+          cp -r firmware/.pio/build release_artifacts/ || true
+          tar -czf varuna_sds_firmware.tar.gz release_artifacts/
+
+      - name: Draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            varuna_sds_firmware.tar.gz
+            docs/PRD.md
+            docs/schematic_guide.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
